@@ -1,11 +1,12 @@
 # cs686-assignment08-IaC
 
-Beginner IaC project using Packer and Terraform to build and deploy an Amazon Linux 2023 EC2 instance with Docker on AWS.
+IaC project using Packer and Terraform to build and deploy 6 private Amazon Linux EC2 instances with Docker on AWS, accessible via a bastion host.
 
 **What gets deployed:**
-- VPC with a public subnet, internet gateway, and route table
-- Security group allowing SSH inbound
-- EC2 instance running a custom AMI with Docker pre-installed
+- VPC with public and private subnets, internet gateway, and NAT gateway
+- Bastion host in the public subnet (SSH access restricted to your IP)
+- 6 Docker hosts in the private subnet (accessible only through the bastion)
+- Security groups enforcing least-privilege access
 
 ---
 
@@ -35,7 +36,7 @@ cd cs686-assignment08-IaC
 This creates an Amazon Linux 2023 AMI with Docker installed in your AWS account.
 
 ```bash
-packer build packer.json
+packer build packer.pkr.hcl
 ```
 
 At the end of the build you will see output like:
@@ -49,15 +50,15 @@ Copy that AMI ID — you will need it in the next step.
 
 ---
 
-## Step 3 — Set the AMI ID
+## Step 3 — Configure terraform.tfvars
 
-Open `terraform/terraform.tfvars` and replace the placeholder with your AMI ID:
+Open `terraform/terraform.tfvars` and set the following values:
 
 ```hcl
-ami_id = "ami-xxxxxxxxxxxxxxxxx"
+ami_id         = "ami-xxxxxxxxxxxxxxxxx"   # AMI ID from the Packer build
+my_ip          = "x.x.x.x"                # Your public IP: curl -s ifconfig.me
+public_key     = "ssh-ed25519 ..."         # Contents of your ~/.ssh/id_ed25519.pub
 ```
-
-Optionally change `aws_region`, `instance_type`, or CIDR blocks to match your environment.
 
 ---
 
@@ -72,15 +73,29 @@ terraform apply   # deploy (type 'yes' to confirm)
 
 ---
 
-## Step 5 — Connect to the instance
+## Step 5 — Connect to a private instance
 
-After `terraform apply` completes, the outputs include an SSH command:
+After `terraform apply` completes, get the bastion IP and private instance IPs:
 
+```bash
+terraform output bastion_public_ip
+terraform output private_instance_ips
 ```
-ssh_command = "ssh ec2-user@<public-ip>"
+
+Add your SSH key to the agent, then jump through the bastion to any private instance:
+
+```bash
+ssh-add ~/.ssh/id_ed25519
+ssh -A -J ec2-user@<bastion_public_ip> ec2-user@<private_instance_ip>
 ```
 
-Run that command to connect. Docker is pre-installed and ready:
+For example, to connect to docker-host-1:
+
+```bash
+ssh -A -J ec2-user@16.144.154.142 ec2-user@10.0.2.187
+```
+
+The `-A` flag forwards your SSH agent through the bastion so it can authenticate to the private instance. Docker is pre-installed and ready:
 
 ```bash
 docker run hello-world
@@ -115,11 +130,12 @@ aws ec2 describe-snapshots --owner-ids self --region us-west-2 \
 
 ```
 .
-├── packer.json              # Packer build config — creates the Docker AMI
+├── packer.pkr.hcl           # Packer build config — creates the Docker AMI
 ├── install-dependencies.sh  # Provisioning script run by Packer inside the AMI
 └── terraform/
-    ├── main.tf              # VPC module, security group, EC2 instance
+    ├── main.tf              # VPC module, security groups, 6 private EC2 instances
+    ├── bastion.tf           # Bastion host in the public subnet
     ├── variables.tf         # Input variable declarations
-    ├── outputs.tf           # Public IP, instance ID, SSH command
-    └── terraform.tfvars     # Variable values (set ami_id here after Packer build)
+    ├── outputs.tf           # Bastion IP, private IPs, SSH command
+    └── terraform.tfvars     # Variable values (ami_id, my_ip, public_key)
 ```

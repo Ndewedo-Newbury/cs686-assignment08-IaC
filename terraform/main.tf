@@ -41,7 +41,7 @@ resource "aws_security_group" "private_instances" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [module.bastion.bastion_security_group_id]
+    security_groups = [aws_security_group.bastion.id]
   }
 
   egress {

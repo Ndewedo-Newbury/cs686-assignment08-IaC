@@ -3,24 +3,38 @@ resource "aws_key_pair" "bastion-key" {
   public_key = var.public_key
 }
 
-module "bastion" {
-  source  = "umotif-public/bastion/aws"
-  version = "~> 2.0.0"
+resource "aws_security_group" "bastion" {
+  name        = "${var.project_name}-bastion-sg"
+  description = "Allow SSH from my IP only"
+  vpc_id      = module.vpc.vpc_id
 
-  region = var.aws_region
+  ingress {
+    description = "SSH from my IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["${var.my_ip}/32"]
+  }
 
-  name_prefix = var.bastion_prefix
-
-  vpc_id          = module.vpc.vpc_id
-  public_subnets  = flatten([module.vpc.public_subnets])
-  private_subnets = flatten([module.vpc.private_subnets])
-
-  ssh_key_name    = aws_key_pair.bastion-key.key_name
-  ssh_cidr_blocks = ["${var.my_ip}/32"]
-
-  # if you have a domain name setup, you can use the command below to
-  # add the Bastion Host in AWS Route53. You need your ZoneId
-  #hosted_zone_id = "Zxxxxxxxxxxxxxxxx"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = var.resource_tags
+}
+
+resource "aws_instance" "bastion" {
+  ami                         = var.bastion_ami_id
+  instance_type               = "t3.micro"
+  subnet_id                   = module.vpc.public_subnets[0]
+  vpc_security_group_ids      = [aws_security_group.bastion.id]
+  key_name                    = aws_key_pair.bastion-key.key_name
+  associate_public_ip_address = true
+
+  tags = merge(var.resource_tags, {
+    Name = "${var.project_name}-bastion"
+  })
 }

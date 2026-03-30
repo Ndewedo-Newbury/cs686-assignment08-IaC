@@ -9,6 +9,11 @@ variable "ami_id" {
   type        = string
 }
 
+variable "bastion_ami_id" {
+  description = "AMI ID for the bastion host (use a standard Amazon Linux 2 AMI for your region)"
+  type        = string
+}
+
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string

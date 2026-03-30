@@ -1,14 +1,16 @@
 aws_region          = "us-west-2"
-instance_type       = "t2.micro"
+instance_type       = "t3.micro"
 vpc_cidr            = "10.0.0.0/16"
 public_subnet_cidr  = "10.0.1.0/24"
 private_subnet_cidr = "10.0.2.0/24"
 project_name        = "cs686-assignment08"
 bastion_prefix      = "cs686-bastion"
 
-# Set this after running: packer build packer.json
-# The AMI ID will be printed at the end of the Packer build
-ami_id = "ami-REPLACE_AFTER_PACKER_BUILD"
+# Standard Amazon Linux 2 AMI for the bastion host (us-west-2)
+bastion_ami_id = "ami-0534a0fd33c655746"
+
+# Custom AMI built by Packer
+ami_id = "ami-09e69f1211a5b823f"
 
 # Your public IP — run: curl -s ifconfig.me
 my_ip = "73.71.103.28"

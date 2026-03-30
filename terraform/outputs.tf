@@ -23,12 +23,12 @@ output "private_subnet_id" {
   value       = module.vpc.private_subnets[0]
 }
 
-output "bastion_dns" {
-  description = "DNS name of the bastion host"
-  value       = module.bastion.bastion_host_dns
+output "bastion_public_ip" {
+  description = "Public IP of the bastion host"
+  value       = aws_instance.bastion.public_ip
 }
 
 output "bastion_ssh_command" {
   description = "SSH command to reach a private instance via the bastion (replace INDEX with 0-5)"
-  value       = "ssh -J ec2-user@${module.bastion.bastion_host_dns} ec2-user@${aws_instance.docker_host[0].private_ip}"
+  value       = "ssh -J ec2-user@${aws_instance.bastion.public_ip} ec2-user@${aws_instance.docker_host[0].private_ip}"
 }
