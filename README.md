@@ -6,6 +6,7 @@ IaC project using Packer and Terraform to build and deploy 6 private Amazon Linu
 - VPC with public and private subnets, internet gateway, and NAT gateway
 - Bastion host in the public subnet (SSH access restricted to your IP)
 - 6 Docker hosts in the private subnet (accessible only through the bastion)
+- Monitoring host in the private subnet running Prometheus, Grafana, and node_exporter via Docker Compose
 - Security groups enforcing least-privilege access
 
 ---
@@ -46,6 +47,8 @@ At the end of the build you will see output like:
 us-west-2: ami-xxxxxxxxxxxxxxxxx
 ```
 
+![alt text](image.png)
+
 Copy that AMI ID — you will need it in the next step.
 
 ---
@@ -82,6 +85,8 @@ terraform output bastion_public_ip
 terraform output private_instance_ips
 ```
 
+![alt text](image-1.png)
+
 Add your SSH key to the agent, then jump through the bastion to any private instance:
 
 ```bash
@@ -101,6 +106,35 @@ The `-A` flag forwards your SSH agent through the bastion so it can authenticate
 docker run hello-world
 ```
 
+---
+
+## Step 6 - Connect to Grafana via SSH
+
+use the ssh command provided by the terraform output:
+
+```bash
+ssh -L 3000:10.0.2.119:3000 -L 9090:10.0.2.119:9090 -J ec2-user@16.146.71.67 ec2-user@10.0.2.119
+```
+
+Then in the remote terminal run 
+```bash
+cd /opt/monitoring && docker compose up -d
+```
+
+then connect to Grafana using url:  http://localhost:3000 
+login: 
+Username: admin 
+Password:changeme
+
+To setup Grafana connections, go to Connections → Data Sources and check if Prometheus is
+  listed with a green checkmark. If not, add it manually:
+
+  1. Connections → Data Sources → Add data source → Prometheus
+  2. Set URL to http://prometheus:9090 (they're on the same Docker
+  network)
+  3. Click Save & Test — it should say "Successfully queried the
+  Prometheus API"
+  
 ---
 
 ## Cleanup
@@ -132,10 +166,13 @@ aws ec2 describe-snapshots --owner-ids self --region us-west-2 \
 .
 ├── packer.pkr.hcl           # Packer build config — creates the Docker AMI
 ├── install-dependencies.sh  # Provisioning script run by Packer inside the AMI
+├── image.png                # Screenshot: Packer AMI build output
+├── image-1.png              # Screenshot: Terraform output (bastion IP, private IPs)
 └── terraform/
     ├── main.tf              # VPC module, security groups, 6 private EC2 instances
     ├── bastion.tf           # Bastion host in the public subnet
+    ├── monitoring.tf        # Monitoring host — Prometheus, Grafana, node_exporter
     ├── variables.tf         # Input variable declarations
-    ├── outputs.tf           # Bastion IP, private IPs, SSH command
+    ├── outputs.tf           # Bastion IP, private IPs, monitoring IP, SSH commands
     └── terraform.tfvars     # Variable values (ami_id, my_ip, public_key)
 ```
