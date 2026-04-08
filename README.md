@@ -47,9 +47,7 @@ At the end of the build you will see output like:
 us-west-2: ami-xxxxxxxxxxxxxxxxx
 ```
 
-![alt text](image.png)
-
-Copy that AMI ID — you will need it in the next step.
+Copy that AMI ID for the docker instances and the ubuntu instances — you will need it in the next step.
 
 ---
 
@@ -58,8 +56,9 @@ Copy that AMI ID — you will need it in the next step.
 Open `terraform/terraform.tfvars` and set the following values:
 
 ```hcl
-ami_id         = "ami-xxxxxxxxxxxxxxxxx"   # AMI ID from the Packer build
-my_ip          = "x.x.x.x"                # Your public IP: curl -s ifconfig.me
+ami_id         = "ami-xxxxxxxxxxxxxxxxx"   # AMI ID from the Packer build (Amazon Linux 2023 + Docker)
+ansible_ami    = "ami-xxxxxxxxxxxxxxxxx"   # AMI ID from the Packer build (Amazon Linux 2023 + Ansible)
+my_ip          = "x.x.x.x"                 # Your public IP: curl -s ifconfig.me
 public_key     = "ssh-ed25519 ..."         # Contents of your ~/.ssh/id_ed25519.pub
 ```
 
@@ -76,65 +75,62 @@ terraform apply   # deploy (type 'yes' to confirm)
 
 ---
 
-## Step 5 — Connect to a private instance
+## Step 5 — SSH to ansible controller via bastion
 
-After `terraform apply` completes, get the bastion IP and private instance IPs:
-
+After `terraform apply` completes, get the ssh command from the output
 ```bash
-terraform output bastion_public_ip
-terraform output private_instance_ips
+terraform output ansible_controller_ssh_command
 ```
 
-![alt text](image-1.png)
+## Step 6 - Ansible conifguration
 
-Add your SSH key to the agent, then jump through the bastion to any private instance:
+Once in the terminal create two files:
 
+inventory.ini containing the IPs of the instances being managed
 ```bash
-ssh-add ~/.ssh/id_ed25519
-ssh -A -J ec2-user@<bastion_public_ip> ec2-user@<private_instance_ip>
+ [amazon_linux]
+  10.0.2.xx
+  10.0.2.xx
+  10.0.2.xx
+
+  [ubuntu]
+  10.0.2.xx
+  10.0.2.xx
+  10.0.2.xx
+
+  [ubuntu:vars]
+  ansible_user=ubuntu
+
+  [amazon_linux:vars]
+  ansible_user=ec2-user
 ```
 
-For example, to connect to docker-host-1:
-
+ansible.cfg file 
 ```bash
-ssh -A -J ec2-user@16.144.154.142 ec2-user@10.0.2.187
+  [defaults]                                                                                                                                                                                     
+  inventory = ~/inventory.ini                                                                                                                                                                    
+  remote_user = ec2-user                                                                                                                                                                         
+  private_key_file = ~/.ssh/id_ed25519                                                                                                                                                           
+  host_key_checking = False  
 ```
 
-The `-A` flag forwards your SSH agent through the bastion so it can authenticate to the private instance. Docker is pre-installed and ready:
-
+Then git clone this repo in order to get the ansible/11_assignment.yml playbook
 ```bash
-docker run hello-world
+terraform output playbook_repo_url
 ```
 
----
-
-## Step 6 - Connect to Grafana via SSH
-
-use the ssh command provided by the terraform output:
-
+On your local machine run:
 ```bash
-ssh -L 3000:10.0.2.119:3000 -L 9090:10.0.2.119:9090 -J ec2-user@16.146.71.67 ec2-user@10.0.2.119
+scp -J ec2-user@<bastion_ip> ~/.ssh/id_ed25519 ec2-user@<ansible_controller_ip>:~/.ssh/id_ed25519
+```
+replacing the placeholders with the terraform output values
+
+Back on the ansible controller, in the home directory, run:
+```bash
+cd ~
+ansible-playbook -i ~/inventory.ini cs686-assignment08-IaC/ansible/11_assignment.yml 
 ```
 
-Then in the remote terminal run 
-```bash
-cd /opt/monitoring && docker compose up -d
-```
-
-then connect to Grafana using url:  http://localhost:3000 
-login: 
-Username: admin 
-Password:changeme
-
-To setup Grafana connections, go to Connections → Data Sources and check if Prometheus is
-  listed with a green checkmark. If not, add it manually:
-
-  1. Connections → Data Sources → Add data source → Prometheus
-  2. Set URL to http://prometheus:9090 (they're on the same Docker
-  network)
-  3. Click Save & Test — it should say "Successfully queried the
-  Prometheus API"
-  
 ---
 
 ## Cleanup
@@ -165,61 +161,12 @@ aws ec2 describe-snapshots --owner-ids self --region us-west-2 \
 ```
 .
 ├── packer.pkr.hcl           # Packer build config — creates the Docker AMI
-├── install-dependencies.sh  # Provisioning script run by Packer inside the AMI
-├── image.png                # Screenshot: Packer AMI build output
-├── image-1.png              # Screenshot: Terraform output (bastion IP, private IPs)
+├── install-docker.sh        # Provisioning script run by Packer inside the AMI for docker
+├── install-ansible.sh        # Provisioning script run by Packer inside the AMI for ansible
 └── terraform/
     ├── main.tf              # VPC module, security groups, 6 private EC2 instances
     ├── bastion.tf           # Bastion host in the public subnet
-    ├── monitoring.tf        # Monitoring host — Prometheus, Grafana, node_exporter
     ├── variables.tf         # Input variable declarations
-    ├── outputs.tf           # Bastion IP, private IPs, monitoring IP, SSH commands
+    ├── outputs.tf           # Bastion IP, private IPs, ansible controller IP, SSH commands
     └── terraform.tfvars     # Variable values (ami_id, my_ip, public_key)
 ```
-
-Yes — the inventory file lives on the Ansible controller instance. The workflow is:                                                                   
-                                                                                                                                                        
-  1. Run terraform output on your local machine to get the private IPs                                                                                  
-  2. SSH into the Ansible controller:                                                                                                                   
-  ssh -J ec2-user@<bastion_ip> ec2-user@<ansible_controller_ip>                                                                                         
-  3. Create the inventory file there:
-  vi ~/inventory.ini
-  4. Paste in the IPs and run your playbook:
-  ansible-playbook -i ~/inventory.ini check_docker_version.yml
-  
-The hosts: field in the playbook maps to the group names in your inventory. Since you'd have [amazon_linux] and [ubuntu] groups in inventory.ini, you 
-  set:                                                                                                                                                  
-                                                                                                                                                        
-  - name: Check Docker version on all hosts                                                                                                             
-    hosts: all  # or "amazon_linux:ubuntu" or just "all"                                                                                                
-                  
-  Then run it with:
-
-  ansible-playbook -i ~/inventory.ini check_docker_version.yml
-
-  Ansible reads the inventory, resolves the IPs in each group, and SSHs into each one to run the tasks. The when: ansible_os_family == "RedHat" /
-  "Debian" conditions in the playbook will automatically route the yum vs apt tasks to the right hosts.
-
-  You'll also need to tell Ansible which SSH key to use — either pass it at runtime:
-
-  ansible-playbook -i ~/inventory.ini check_docker_version.yml --private-key ~/.ssh/your_key.pem
-
-  Or set it in an ansible.cfg next to the playbook:
-
-  [defaults]
-  private_key_file = ~/.ssh/your_key.pem
-  remote_user = ec2-user
-
-ansible-playbook -i ~/inventory.ini check_docker_version.yml
-
-❯ what would the contents of the ansible.cfg look like?                                                                                                 
-                                                        
-● [defaults]                                                                                                                                            
-  inventory = ~/inventory.ini                                                                                                                           
-  remote_user = ec2-user                                                                                                                                
-  private_key_file = ~/.ssh/your_key.pem                                                                                                                
-  host_key_checking = False                                                                                                                             
-                  
-  - remote_user — ec2-user is the default for both Amazon Linux and Ubuntu AMIs on AWS
-  - private_key_file — the .pem key pair you assigned to the instances in Terraform
-  - host_key_checking = False — skips the SSH fingerprint prompt on first connection (common for ephemeral EC2s)
