@@ -17,7 +17,7 @@ variable "bastion_ami_id" {
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
 }
 
 variable "vpc_cidr" {
@@ -58,12 +58,23 @@ variable "resource_tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
   default = {
-    Project = "cs686-assignment08"
+    Project = "cs686-assignment11"
   }
 }
 
 variable "project_name" {
   description = "Project name used for resource naming and tagging"
   type        = string
-  default     = "cs686-assignment08"
+  default     = "cs686-assignment11"
 }
+
+variable "ansible_controller_ami_id" {
+  description = "AMI ID built by Packer for the Ansible Controller (cs686-ansible-controller-ami)"
+  type        = string
+}
+
+variable "playbook_repo_url" {
+  description = "HTTPS URL of the Git repo containing Ansible playbooks (e.g. https://github.com/org/repo.git)"
+  type        = string
+}
+

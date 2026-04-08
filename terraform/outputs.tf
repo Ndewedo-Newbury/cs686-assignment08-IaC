@@ -1,11 +1,31 @@
-output "private_instance_ids" {
-  description = "Instance IDs of all 6 private docker hosts"
-  value       = aws_instance.docker_host[*].id
+output "ubuntu_instance_ids" {
+  description = "Instance IDs of the 3 Ubuntu hosts"
+  value       = aws_instance.ubuntu[*].id
 }
 
-output "private_instance_ips" {
-  description = "Private IPs of all 6 docker hosts"
-  value       = aws_instance.docker_host[*].private_ip
+output "ubuntu_instance_ips" {
+  description = "Private IPs of the 3 Ubuntu hosts"
+  value       = aws_instance.ubuntu[*].private_ip
+}
+
+output "amazon_linux_instance_ids" {
+  description = "Instance IDs of the 3 Amazon Linux hosts"
+  value       = aws_instance.amazon_linux[*].id
+}
+
+output "amazon_linux_instance_ips" {
+  description = "Private IPs of the 3 Amazon Linux hosts"
+  value       = aws_instance.amazon_linux[*].private_ip
+}
+
+output "ansible_controller_private_ip" {
+  description = "Private IP of the Ansible Controller"
+  value       = aws_instance.ansible_controller.private_ip
+}
+
+output "ansible_controller_ssh_command" {
+  description = "SSH command to reach the Ansible Controller via the bastion"
+  value       = "ssh -J ec2-user@${aws_instance.bastion.public_ip} ec2-user@${aws_instance.ansible_controller.private_ip}"
 }
 
 output "vpc_id" {
@@ -29,6 +49,7 @@ output "bastion_public_ip" {
 }
 
 output "bastion_ssh_command" {
-  description = "SSH command to reach a private instance via the bastion (replace INDEX with 0-5)"
-  value       = "ssh -J ec2-user@${aws_instance.bastion.public_ip} ec2-user@${aws_instance.docker_host[0].private_ip}"
+  description = "SSH command to reach a private instance via the bastion"
+  value       = "ssh -J ec2-user@${aws_instance.bastion.public_ip} ec2-user@${aws_instance.ubuntu[0].private_ip}"
 }
+

@@ -39,11 +39,44 @@ source "amazon-ebs" "al2023_docker" {
   }
 }
 
+source "amazon-ebs" "ansible_controller" {
+  region        = var.aws_region
+  instance_type = var.instance_type
+
+  source_ami_filter {
+    filters = {
+      name                = "al2023-ami-*-x86_64"
+      virtualization-type = "hvm"
+      root-device-type    = "ebs"
+    }
+    owners      = ["amazon"]
+    most_recent = true
+  }
+
+  ssh_username    = "ec2-user"
+  ami_name        = "cs686-ansible-controller-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+  ami_description = "Amazon Linux 2023 with Ansible installed"
+
+  tags = {
+    Project = "cs686-assignment11"
+    Role    = "ansible-controller"
+  }
+}
+
 build {
   sources = ["source.amazon-ebs.al2023_docker"]
 
   provisioner "shell" {
     script          = "install-dependencies.sh"
+    execute_command = "bash '{{.Path}}'"
+  }
+}
+
+build {
+  sources = ["source.amazon-ebs.ansible_controller"]
+
+  provisioner "shell" {
+    script          = "install-ansible.sh"
     execute_command = "bash '{{.Path}}'"
   }
 }
