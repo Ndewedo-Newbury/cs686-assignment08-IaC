@@ -41,12 +41,11 @@
 
     # --- Disk usage ---
 
+    - name: Get disk usage
+      ansible.builtin.command: df -h
+      register: disk_usage
+      changed_when: false
+
     - name: Report disk usage
       ansible.builtin.debug:
-        msg: >
-          {{ inventory_hostname }} — {{ item.mount }}:
-          {{ item.block_used * item.block_size | human_readable }} used of
-          {{ item.size_total | human_readable }}
-          ({{ ((item.block_used / item.block_total) * 100) | round(1) }}%)
-      loop: "{{ ansible_mounts }}"
-      when: item.block_total > 0
+        msg: "{{ inventory_hostname }}\n{{ disk_usage.stdout }}"
