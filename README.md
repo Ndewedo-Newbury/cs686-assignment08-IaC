@@ -115,8 +115,16 @@ ansible.cfg file
 ```
 
 Then git clone this repo in order to get the ansible/11_assignment.yml playbook
+
+On local machine run:
 ```bash
 terraform output playbook_repo_url
+```
+
+On ansible controller run (HTTPS):
+```bash
+git clone <repo-url>
+git checkout 11assignment
 ```
 
 On your local machine run:
