@@ -176,3 +176,50 @@ aws ec2 describe-snapshots --owner-ids self --region us-west-2 \
     ├── outputs.tf           # Bastion IP, private IPs, monitoring IP, SSH commands
     └── terraform.tfvars     # Variable values (ami_id, my_ip, public_key)
 ```
+
+Yes — the inventory file lives on the Ansible controller instance. The workflow is:                                                                   
+                                                                                                                                                        
+  1. Run terraform output on your local machine to get the private IPs                                                                                  
+  2. SSH into the Ansible controller:                                                                                                                   
+  ssh -J ec2-user@<bastion_ip> ec2-user@<ansible_controller_ip>                                                                                         
+  3. Create the inventory file there:
+  vi ~/inventory.ini
+  4. Paste in the IPs and run your playbook:
+  ansible-playbook -i ~/inventory.ini check_docker_version.yml
+  
+The hosts: field in the playbook maps to the group names in your inventory. Since you'd have [amazon_linux] and [ubuntu] groups in inventory.ini, you 
+  set:                                                                                                                                                  
+                                                                                                                                                        
+  - name: Check Docker version on all hosts                                                                                                             
+    hosts: all  # or "amazon_linux:ubuntu" or just "all"                                                                                                
+                  
+  Then run it with:
+
+  ansible-playbook -i ~/inventory.ini check_docker_version.yml
+
+  Ansible reads the inventory, resolves the IPs in each group, and SSHs into each one to run the tasks. The when: ansible_os_family == "RedHat" /
+  "Debian" conditions in the playbook will automatically route the yum vs apt tasks to the right hosts.
+
+  You'll also need to tell Ansible which SSH key to use — either pass it at runtime:
+
+  ansible-playbook -i ~/inventory.ini check_docker_version.yml --private-key ~/.ssh/your_key.pem
+
+  Or set it in an ansible.cfg next to the playbook:
+
+  [defaults]
+  private_key_file = ~/.ssh/your_key.pem
+  remote_user = ec2-user
+
+ansible-playbook -i ~/inventory.ini check_docker_version.yml
+
+❯ what would the contents of the ansible.cfg look like?                                                                                                 
+                                                        
+● [defaults]                                                                                                                                            
+  inventory = ~/inventory.ini                                                                                                                           
+  remote_user = ec2-user                                                                                                                                
+  private_key_file = ~/.ssh/your_key.pem                                                                                                                
+  host_key_checking = False                                                                                                                             
+                  
+  - remote_user — ec2-user is the default for both Amazon Linux and Ubuntu AMIs on AWS
+  - private_key_file — the .pem key pair you assigned to the instances in Terraform
+  - host_key_checking = False — skips the SSH fingerprint prompt on first connection (common for ephemeral EC2s)

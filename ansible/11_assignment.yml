@@ -20,6 +20,14 @@
         update_cache: true
       when: ansible_os_family == "Debian"
 
+    # --- Install Docker if missing (Ubuntu) ---
+
+    - name: Install Docker (Ubuntu)
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+      when: ansible_os_family == "Debian"
+
     # --- Verify Docker version ---
 
     - name: Get Docker version
@@ -37,8 +45,8 @@
       ansible.builtin.debug:
         msg: >
           {{ inventory_hostname }} — {{ item.mount }}:
-          {{ item.size_used | human_readable }} used of
+          {{ item.block_used * item.block_size | human_readable }} used of
           {{ item.size_total | human_readable }}
-          ({{ (item.size_used / item.size_total * 100) | round(1) }}%)
+          ({{ ((item.block_used / item.block_total) * 100) | round(1) }}%)
       loop: "{{ ansible_mounts }}"
-      when: item.size_total > 0
+      when: item.block_total > 0
