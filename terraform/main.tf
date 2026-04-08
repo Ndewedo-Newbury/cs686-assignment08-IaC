@@ -150,7 +150,7 @@ resource "aws_instance" "ansible_controller" {
 
   user_data = <<-EOF
     #!/bin/bash
-    git clone ${var.playbook_repo_url} /home/ec2-user/playbooks
+    git clone -b ${var.playbook_branch} ${var.playbook_repo_url} /home/ec2-user/playbooks
     chown -R ec2-user:ec2-user /home/ec2-user/playbooks
   EOF
 

@@ -34,7 +34,7 @@ source "amazon-ebs" "al2023_docker" {
   ami_description = "Amazon Linux 2023 with Docker installed"
 
   tags = {
-    Project = "cs686-assignment08"
+    Project = "cs686-assignment11"
     Base    = "AmazonLinux2023"
   }
 }
@@ -67,7 +67,7 @@ build {
   sources = ["source.amazon-ebs.al2023_docker"]
 
   provisioner "shell" {
-    script          = "install-dependencies.sh"
+    script          = "install-docker.sh"
     execute_command = "bash '{{.Path}}'"
   }
 }

@@ -78,3 +78,9 @@ variable "playbook_repo_url" {
   type        = string
 }
 
+variable "playbook_branch" {
+  description = "Git branch to clone for Ansible playbooks"
+  type        = string
+  default     = "11assignment"
+}
+

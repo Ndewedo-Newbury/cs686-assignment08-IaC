@@ -10,16 +10,16 @@ bastion_prefix      = "cs686-bastion"
 bastion_ami_id = "ami-0534a0fd33c655746"
 
 # Custom AMI built by Packer (Amazon Linux 2023 + Docker)
-ami_id = "ami-04731c90409af234b"
+ami_id = "ami-0c9ee699ae061f656"
 
 # Custom AMI built by Packer (Amazon Linux 2023 + Ansible) — update after running packer build
-ansible_controller_ami_id = ""
+ansible_controller_ami_id = "ami-0288ba589d4b7f1b3"
 
 # HTTPS URL of the Git repo containing Ansible playbooks
-playbook_repo_url = "https://github.com/<your-org>/<your-repo>.git"
+playbook_repo_url = "https://github.com/Ndewedo-Newbury/cs686-assignment08-IaC"
 
 # Your public IP — run: curl -s ifconfig.me
-my_ip = "138.202.26.169"
+my_ip = "138.202.26.175"
 
 # Paste your SSH public key here (e.g. contents of ~/.ssh/id_ed25519.pub)
 public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKL+xesBlZmIUxaaNKTkhHLqs89H/XzvY4a3RaLRBJCu nfnewbury@dons.usfca.edu"

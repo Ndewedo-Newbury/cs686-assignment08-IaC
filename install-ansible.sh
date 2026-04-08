@@ -1,9 +1,8 @@
-set -e
+#!/bin/bash
+set -euo pipefail
 
-sudo apt update -y
-sudo apt install software-properties-common
-sudo add-apt-repository --yes --update ppa:ansible/ansible
-sudo apt install ansible
+# Install Ansible on Amazon Linux 2023
+sudo dnf install -y ansible git
 
 # Add SSH public key so you can SSH in via bastion
 mkdir -p ~/.ssh

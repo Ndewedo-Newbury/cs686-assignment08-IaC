@@ -11,10 +11,10 @@ detect_os() {
 }
 
 install_docker_amazon_linux() {
-    yum update -y
-    yum install -y docker
-    systemctl enable docker
-    systemctl start docker
+    sudo yum update -y
+    sudo yum install -y docker
+    sudo systemctl enable docker
+    sudo systemctl start docker
 }
 
 install_docker_ubuntu() {
